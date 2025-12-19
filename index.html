@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Societe - macOS Style</title>
+    <title>Societe - Universal (Audio Fix)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -28,7 +28,7 @@
             --radius-md: 18px;
             --radius-lg: 24px;
             
-            /* Chat Specifics (iMessage style) */
+            /* Chat Specifics */
             --chat-bubble-sent: #007AFF;
             --chat-bubble-received: #E9E9EB;
             --chat-text-sent: #FFFFFF;
@@ -50,12 +50,13 @@
             overflow-y: scroll;
         }
 
+        /* --- Scrollbar Minimalista --- */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #D1D1D6; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #aeaeb2; }
 
-        /* --- Pop-up Overlay --- */
+        /* --- Pop-up Overlay (Modal Glass) --- */
         #name-popup-overlay {
             position: fixed; inset: 0;
             background-color: rgba(0, 0, 0, 0.2);
@@ -96,7 +97,7 @@
         #name-popup button:hover { background-color: var(--primary-hover); }
         #name-popup button:active { transform: scale(0.98); }
 
-        /* --- Navbar --- */
+        /* --- Navbar (Frosted Glass Sticky) --- */
         .navbar {
             background-color: var(--surface-translucent);
             backdrop-filter: blur(20px);
@@ -215,51 +216,71 @@
         .post-action:hover { background: rgba(0, 122, 255, 0.08); color: var(--primary); }
 
         /* --- Watch Section (TV Style) --- */
-        #watch-section { display: none; flex-direction: column; width: 100%; }
+        #watch-section { display: none; width: 100%; }
         
-        .tv-container {
-            display: flex; gap: 20px;
-            height: calc(100vh - 150px);
+        .tv-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 120px);
+        }
+
+        .tv-screen-container {
+            display: flex; flex-direction: column;
         }
         
-        .tv-screen {
-            flex: 3;
+        .tv-frame {
             background: #000;
             border-radius: var(--radius-md);
             overflow: hidden;
-            display: flex; flex-direction: column;
             box-shadow: var(--shadow-lg);
+            position: relative;
+            padding-top: 56.25%; /* Aspect Ratio 16:9 */
         }
         
-        .tv-screen video { width: 100%; height: 100%; object-fit: contain; }
-        
-        .channel-list {
-            flex: 1;
+        #hls-player {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        .channel-info {
+            margin-top: 15px;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .channel-list-container {
             background: var(--surface);
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-md);
-            overflow-y: auto;
+            overflow: hidden;
             display: flex; flex-direction: column;
-            border: 1px solid rgba(0,0,0,0.05);
         }
-        
-        .channel-header {
+
+        .channel-list-header {
             padding: 20px; border-bottom: 1px solid var(--divider);
-            font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 10px;
+            font-weight: 600; font-size: 1.1rem;
         }
-        
+
+        .channels-scroll {
+            overflow-y: auto; flex: 1;
+        }
+
         .channel-item {
-            padding: 15px 20px; border-bottom: 1px solid var(--divider);
-            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;
+            display: flex; align-items: center; gap: 15px;
+            padding: 15px 20px;
+            cursor: pointer; border-bottom: 1px solid var(--divider);
+            transition: background 0.2s;
         }
-        .channel-item:hover { background-color: #f2f2f7; }
-        .channel-item.active-channel { background-color: rgba(0, 122, 255, 0.1); border-left: 4px solid var(--primary); }
+        .channel-item:hover { background: #f0f0f5; }
+        .channel-item.active { background: rgba(0, 122, 255, 0.1); border-left: 4px solid var(--primary); }
+        
         .channel-icon {
-            width: 40px; height: 40px; background: #e5e5ea; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+            width: 40px; height: 40px; border-radius: 8px;
+            background: #eee; display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; color: #555;
         }
-        .channel-info div:first-child { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
-        .channel-info div:last-child { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
 
         /* --- Chat Section --- */
         #chat-section { display: none; height: calc(100vh - 120px); }
@@ -312,12 +333,14 @@
         }
         .message.sent {
             align-self: flex-end;
-            background-color: var(--chat-bubble-sent); color: var(--chat-text-sent);
+            background-color: var(--chat-bubble-sent);
+            color: var(--chat-text-sent);
             border-bottom-right-radius: 4px;
         }
         .message.received {
             align-self: flex-start;
-            background-color: var(--chat-bubble-received); color: var(--chat-text-received);
+            background-color: var(--chat-bubble-received);
+            color: var(--chat-text-received);
             border-bottom-left-radius: 4px;
         }
         .message strong { display: block; font-size: 0.75rem; opacity: 0.7; margin-bottom: 2px; }
@@ -368,9 +391,8 @@
             .right-sidebar { display: none; }
         }
         @media (max-width: 900px) {
-             .tv-container { flex-direction: column; height: auto; }
-             .tv-screen { height: 300px; flex: none; }
-             .channel-list { height: 300px; flex: none; }
+            .tv-layout { grid-template-columns: 1fr; height: auto; }
+            .channel-list-container { height: 400px; }
         }
         @media (max-width: 800px) {
             .container { grid-template-columns: 1fr; max-width: 600px; }
@@ -398,7 +420,7 @@
         </div>
         <div class="icons">
             <div class="icon active" title="Início"><i class="fas fa-home"></i></div>
-            <div class="icon" title="Watch"><i class="fas fa-tv"></i></div>
+            <div class="icon" title="TV Channels"><i class="fas fa-tv"></i></div>
             <div class="icon" title="Chat"><i class="fas fa-comment-alt"></i></div>
             <div class="icon" title="Notificações"><i class="fas fa-bell"></i></div>
         </div>
@@ -411,7 +433,7 @@
                 <div class="profile-info">
                     <img id="profile-pic" src="" alt="Profile" class="profile-pic">
                     <h3 id="profile-name">Visitante</h3>
-                    <p>Web Designer & Enthusiast</p>
+                    <p>Membro da Comunidade</p>
                 </div>
             </div>
             <div class="card-base">
@@ -444,7 +466,7 @@
                     </div> 
                 </div> 
                 <div class="post-content"> 
-                    <p>Design minimalista traz clareza para a mente. Adorando o novo visual!</p> 
+                    <p>Adorando os novos canais de desenho clássico! Recomendo.</p> 
                 </div> 
                 <img id="post-media-1" src="" alt="Post Image" class="post-image"> 
                 <div class="post-stats"> 
@@ -467,7 +489,7 @@
                     </div> 
                 </div> 
                 <div class="post-content"><p>Conteúdo clássico selecionado para você.</p></div> 
-                <video id="post-media-2" class="post-video" controls autoplay muted playsinline preload="metadata"> 
+                <video id="post-media-2" class="post-video" controls playsinline preload="metadata"> 
                     <source src="" type="video/mp4"> 
                 </video> 
                 <div class="post-actions"> 
@@ -476,24 +498,26 @@
                 </div> 
             </div> 
 
-            <div id="loading-indicator"><i class="fas fa-spinner fa-spin"></i> Carregando feed...</div>
+            <div id="loading-indicator"><i class="fas fa-spinner fa-spin"></i> Carregando feed de clássicos...</div>
         </div>
 
-        <div id="watch-section" class="main-content" style="width: 100%;">
-            <div class="tv-container">
-                <div class="tv-screen">
-                    <video id="hls-player" controls autoplay muted></video>
-                    <div style="padding: 15px; color: white; background: #222;">
-                        <h3 id="current-channel-title">Carregando...</h3>
-                        <p id="current-channel-desc" style="font-size: 0.9rem; color: #aaa;">Sinal ao vivo</p>
+        <div id="watch-section">
+            <div class="tv-layout">
+                <div class="tv-screen-container">
+                    <div class="tv-frame">
+                        <video id="hls-player" controls autoplay muted></video>
+                    </div>
+                    <div class="channel-info">
+                        <h2 id="current-channel-title" style="font-size: 1.2rem; font-weight: 600;">Selecione um canal</h2>
+                        <p id="current-channel-desc" style="color: var(--text-secondary); margin-top:5px;">Assista TV ao vivo de todo o mundo.</p>
                     </div>
                 </div>
-                <div class="channel-list" id="channel-list-container">
-                    <div class="channel-header">
-                        <i class="fas fa-broadcast-tower" style="color: var(--primary);"></i> Canais Ao Vivo
-                    </div>
-                    </div>
-             </div>
+                <div class="channel-list-container">
+                    <div class="channel-list-header">Guia de Canais</div>
+                    <div class="channels-scroll" id="channels-container">
+                        </div>
+                </div>
+            </div>
         </div>
 
         <div id="chat-section">
@@ -517,7 +541,7 @@
                         <button id="send-btn">Enviar</button>
                     </div>
                     <div id="emoji-panel">
-                          <span>😀</span> <span>😂</span> <span>❤️</span> <span>👍</span> <span>🎉</span> <span>🤔</span> <span>🚀</span>
+                           <span>😀</span> <span>😂</span> <span>❤️</span> <span>👍</span> <span>🎉</span> <span>🤔</span> <span>🚀</span>
                     </div>
                 </div>
             </div>
@@ -541,7 +565,18 @@
     </div>
 
     <script>
-        // --- LÓGICA GERAL ---
+        // --- CONSTANTES DE CONFIGURAÇÃO ---
+        const tvChannels = [
+            { name: "Soul TV", category: "Variedades", icon: "fas fa-infinity", url: "https://video01.soultv.com.br/timesbrasil/timesbrasil/playlist.m3u8" },
+            { name: "NASA TV", category: "Ciência", icon: "fas fa-rocket", url: "https://ntv1.akamaized.net/hls/live/2014075/NASA-TV-Public/master.m3u8" },
+            { name: "Red Bull TV", category: "Esportes", icon: "fas fa-bolt", url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8" },
+            { name: "DW News", category: "Notícias", icon: "fas fa-newspaper", url: "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8" },
+            { name: "Al Jazeera", category: "Notícias", icon: "fas fa-globe", url: "https://live-hls-web-aje.getaj.net/AJE/03.m3u8" },
+            { name: "Fashion TV", category: "Estilo", icon: "fas fa-tshirt", url: "https://fash1043.cloudycdn.services/slive/_definst_/ftv_paris_adaptive.smil/playlist.m3u8" },
+            { name: "Classic Cartoons 24/7", category: "Retrô", icon: "fas fa-film", url: "https://stream.dummy-source.com/placeholder.m3u8" } 
+        ];
+
+        // --- LÓGICA PRINCIPAL ---
         const popupOverlay = document.getElementById('name-popup-overlay');
         const confirmButton = document.getElementById('confirm-name-btn');
         const nameInput = document.getElementById('user-name-input');
@@ -553,63 +588,27 @@
         const usedImageSeeds = new Set();
         let videoPostsData = [];
         const usedVideoPostUrls = new Set();
-        let videoObserver;
         let currentApiPage = 1;
         let isFetchingApi = false;
         let apiFetchAttempts = 0;
         const MAX_API_FETCH_ATTEMPTS = 5;
         const loadingIndicator = document.getElementById('loading-indicator');
-        const genericPostTexts = [ "Adoro esses clássicos!", "Animação old school é outra vibe.", "Alguém assistindo o canal de variedades?", "Testando o novo layout de TV...", "Isso sim é desenho de verdade." ];
+        const genericPostTexts = [ "A era de ouro da animação.", "Isso sim é desenho!", "Alguém lembra desse?", "Clássico absoluto.", "Maratonando tudo." ];
         
         const homeIcon = document.querySelector('.icon[title="Início"]');
-        const watchIcon = document.querySelector('.icon[title="Watch"]');
+        const watchIcon = document.querySelector('.icon[title="TV Channels"]');
         const chatIcon = document.querySelector('.icon[title="Chat"]');
-        const mainContent = document.querySelector('.main-content'); // Feed Wrapper
+        const mainContent = document.querySelector('.main-content');
         
-        // --- CONFIGURAÇÃO DA TV ---
         const watchSection = document.getElementById('watch-section');
         const chatSection = document.getElementById('chat-section');
         const hlsPlayer = document.getElementById('hls-player');
-        const channelListContainer = document.getElementById('channel-list-container');
-        const currentChannelTitle = document.getElementById('current-channel-title');
-        const currentChannelDesc = document.getElementById('current-channel-desc');
         let hlsInstance = null;
-
-        // Lista de Canais (TV)
-        const channels = [
-            {
-                name: "Variedades (SoulTV)",
-                url: "https://video01.soultv.com.br/timesbrasil/timesbrasil/playlist.m3u8",
-                icon: "fa-star",
-                desc: "Entretenimento geral e variedades."
-            },
-            {
-                name: "NASA Public",
-                url: "https://ntv1.akamaized.net/hls/live/2013530/NASA-TV-Public/master.m3u8",
-                icon: "fa-rocket",
-                desc: "Exploração espacial ao vivo."
-            },
-            {
-                name: "Red Bull TV",
-                url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
-                icon: "fa-bolt",
-                desc: "Esportes radicais e eventos."
-            },
-            {
-                name: "Al Jazeera English",
-                url: "https://live-hls-web-aje.getaj.net/AJE/03.m3u8",
-                icon: "fa-globe",
-                desc: "Notícias internacionais 24h."
-            },
-            {
-                name: "Rakuten Action",
-                url: "https://rakuten-actionmovies-1-eu.rakuten.wurl.tv/playlist.m3u8",
-                icon: "fa-film",
-                desc: "Filmes de ação clássicos."
-            }
-        ];
-        
         let currentChannelIndex = 0;
+
+        // --- ESTADO DE ÁUDIO GLOBAL ---
+        let globalSoundEnabled = false; // Controle mestre do som
+        let lastFocusedVideo = null;
 
         // --- SCRIPT CHAT ---
         const usernameDisplay = document.getElementById('username-display');
@@ -662,24 +661,17 @@
         function getUniqueImageSeed(prefix = '') { let seed; const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; do { seed = prefix; for (let i = 0; i < 10; i++) { seed += chars.charAt(Math.floor(Math.random() * chars.length)); } } while (usedImageSeeds.has(seed)); usedImageSeeds.add(seed); return seed; }
         function showLoadingIndicator(show) { if (loadingIndicator) { loadingIndicator.style.display = show ? 'block' : 'none'; } }
         
-        // --- API & MÍDIA (EXPANDIDA) ---
+        // --- API & MÍDIA ---
         async function fetchClassicCartoonsFromAPI(page = 1) { 
             if (isFetchingApi) return false; 
             isFetchingApi = true; 
             showLoadingIndicator(true); 
             apiFetchAttempts++; 
             
-            // Termos de busca expandidos para Golden Age, Looney Tunes, etc.
-            const queryTerms = [
-                'collection:animationandcartoons OR collection:feature_films',
-                'mediatype:movies',
-                '(title:Popeye OR title:"Betty Boop" OR title:Superman OR title:"Looney Tunes" OR title:"Merry Melodies" OR title:"Tom and Jerry" OR title:"Woody Woodpecker" OR title:"Felix the Cat" OR title:"Three Stooges" OR title:"Charlie Chaplin" OR title:"Buster Keaton" OR subject:"classic animation" OR subject:"golden age animation")',
-                '(format:"MPEG4" OR format:"h.264" OR format:"512Kb MPEG4")'
-            ]; 
-            
-            const encodedQuery = encodeURIComponent(queryTerms.join(" AND ")); 
+            const keywords = '(title:Popeye OR title:"Betty Boop" OR title:Superman OR title:"Looney Tunes" OR title:"Merrie Melodies" OR title:"Tom and Jerry" OR title:"Woody Woodpecker" OR title:"Felix the Cat" OR title:"Mickey Mouse" OR title:"Silly Symphonies" OR title:"Casper" OR subject:"classic cartoon" OR subject:"golden age animation" OR subject:"technicolor" OR collection:"classic_cartoons")';
+            const encodedQuery = encodeURIComponent(`collection:(animationandcartoons OR classic_cartoons) AND mediatype:(movies OR video) AND ${keywords}`);
             const fieldsToFetch = "identifier,title,description,year,format,name,original"; 
-            const apiUrl = `https://archive.org/advancedsearch.php?q=${encodedQuery}&fl[]=${fieldsToFetch}&sort[]=downloads+desc&rows=25&page=${page}&output=json`; 
+            const apiUrl = `https://archive.org/advancedsearch.php?q=${encodedQuery}&fl[]=${fieldsToFetch}&sort[]=downloads+desc&rows=35&page=${page}&output=json`; 
             
             let newVideosFound = false; 
             try { 
@@ -703,25 +695,96 @@
                                     videoPostsData.push({ 
                                         title: doc.title + (doc.year ? ` (${doc.year})` : ''), 
                                         url: mp4Url, 
-                                        description: doc.description ? (Array.isArray(doc.description) ? doc.description.join(' ') : doc.description.substring(0, 100) + '...') : `Um clássico da Era de Ouro.` 
+                                        description: doc.description ? (Array.isArray(doc.description) ? doc.description.join(' ') : doc.description) : `Um clássico: ${doc.title}.` 
                                     }); 
                                     newVideosFound = true; 
                                 } 
                             } 
                         } 
                     }); 
-                    if (newVideosFound) { currentApiPage = page + 1; apiFetchAttempts = 0; } 
+                    if (newVideosFound) { 
+                        currentApiPage = page + 1; 
+                        apiFetchAttempts = 0; 
+                    } 
                 } 
             } catch (error) { console.error("API Fetch: Falha:", error); } 
-            isFetchingApi = false; showLoadingIndicator(false); 
+            isFetchingApi = false; 
+            showLoadingIndicator(false); 
             return newVideosFound; 
         }
 
         function getUniqueVideoPostData() { let available = videoPostsData.filter(v => !usedVideoPostUrls.has(v.url)); if (available.length === 0 && videoPostsData.length > 0) { usedVideoPostUrls.clear(); available = [...videoPostsData]; } if (available.length === 0) { return null; } const video = available[Math.floor(Math.random() * available.length)]; usedVideoPostUrls.add(video.url); return video; }
         function handleImageError(img, w = 200, h = 200) { img.src = `https://picsum.photos/seed/${getUniqueImageSeed('fallback_')}/${img.width || w}/${img.height || h}`; img.onerror = null; }
-        function handleVideoError(vid, e) { const src = vid.querySelector('source')?.src || vid.currentSrc; console.error(`Video Error: ${src}`); usedVideoPostUrls.add(src); vid.closest('.post').style.display = 'none'; }
+        function handleVideoError(vid, e) { const src = vid.querySelector('source')?.src || vid.currentSrc; console.error(`Video Error: ${src}`); usedVideoPostUrls.add(src); vid.style.display = 'none'; }
         
-        function initializeVideoObserver() { videoObserver = new IntersectionObserver((entries) => { entries.forEach(entry => { const video = entry.target; if (video.id === 'hls-player') return; if (entry.isIntersecting) { if (video.paused && video.readyState >= 2) video.play().catch(e => console.warn(`Play Falhou:`, e.message)); else if (video.readyState < 2) video.load(); } else { if (!video.paused) video.pause(); } }); }, { root: null, rootMargin: '200px 0px', threshold: 0.1 }); }
+        // --- GERENCIAMENTO INTELIGENTE DE VÍDEO E ÁUDIO ---
+        function attachVideoListeners(videoEl) {
+            // Se o usuário ativar o som manualmente, habilitamos a flag global
+            videoEl.addEventListener('volumechange', () => {
+                if (!videoEl.muted && !globalSoundEnabled) {
+                    globalSoundEnabled = true;
+                    // Força uma verificação imediata para mutar outros
+                    manageVideoFocus();
+                } else if (videoEl.muted && globalSoundEnabled && videoEl === lastFocusedVideo) {
+                    // Se o usuário mutar o vídeo ativo manualmente, respeitamos (mas não necessariamente desligamos o global para os próximos)
+                    // Opção: globalSoundEnabled = false; (Se quiser que desative para tudo)
+                }
+            });
+
+            // Previne que múltiplos vídeos toquem som se o usuário clicar play manualmente
+            videoEl.addEventListener('play', () => {
+               manageVideoFocus();
+            });
+        }
+
+        function manageVideoFocus() {
+            // Apenas para a visualização Home
+            if (mainContent.style.display === 'none') return;
+
+            const videos = document.querySelectorAll('.main-content .post-video');
+            if (videos.length === 0) return;
+
+            let centerVideo = null;
+            let minDistance = Infinity;
+            const windowCenter = window.innerHeight / 2;
+
+            // Encontrar o vídeo mais próximo do centro
+            videos.forEach(video => {
+                const rect = video.getBoundingClientRect();
+                // Verifica se está visível na viewport
+                if (rect.top < window.innerHeight && rect.bottom > 0) {
+                    const videoCenter = rect.top + (rect.height / 2);
+                    const distance = Math.abs(windowCenter - videoCenter);
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        centerVideo = video;
+                    }
+                }
+            });
+
+            // Aplicar lógica de Play/Pause e Mute/Unmute
+            videos.forEach(video => {
+                if (video === centerVideo) {
+                    // Vídeo em foco
+                    if (video.paused) {
+                        video.play().catch(() => {});
+                    }
+                    // APLICAÇÃO DA REGRA DE SOM:
+                    // Se o som global estiver ativado, desmuta o foco. Se não, mantém mutado.
+                    video.muted = !globalSoundEnabled;
+                    lastFocusedVideo = video;
+                } else {
+                    // Vídeos fora de foco
+                    video.muted = true; // Muta automaticamente
+                    // Opcional: Pausar vídeos fora de foco para economizar recursos
+                    if (!video.paused) {
+                        // Pequeno delay para evitar cortes abruptos na rolagem rápida
+                         // video.pause(); 
+                    }
+                }
+            });
+        }
 
         function setInitialMedia() { 
             ['profile-pic', 'create-post-pic', 'post-pic-1', 'post-pic-2', 'post-media-1'].forEach(id => { 
@@ -737,7 +800,9 @@
                 initialVideoPost.querySelector('.post-user').textContent = videoData.title; 
                 const videoEl = initialVideoPost.querySelector('video'); 
                 videoEl.querySelector('source').src = videoData.url; 
-                videoEl.load(); if (videoObserver) videoObserver.observe(videoEl); 
+                videoEl.muted = true; // Começa mudo
+                attachVideoListeners(videoEl);
+                videoEl.load(); 
             } else { initialVideoPost.style.display = 'none'; } 
         }
 
@@ -751,10 +816,10 @@
             
             if (isVideo) { 
                 name = videoData.title; picSeed = getUniqueImageSeed('user_v_'); 
-                content = `<p>Exibindo clássico: <strong>"${videoData.title}"</strong>.</p>`; 
-                media = `<video class="post-video" controls autoplay muted playsinline preload="metadata"><source src="${videoData.url}" type="video/mp4"></video>`; 
+                content = `<p>Assistindo: <strong>"${videoData.title}"</strong>.</p>`; 
+                media = `<video class="post-video" controls muted playsinline preload="metadata"><source src="${videoData.url}" type="video/mp4"></video>`; 
             } else { 
-                const names = ['Lucas P.', 'Ana B.', 'Pedro A.', 'Mariana R.', 'Carlos D.', 'Julia S.']; name = names[Math.floor(Math.random() * names.length)]; picSeed = getUniqueImageSeed('user_g_'); 
+                const names = ['Lucas P.', 'Ana B.', 'Pedro A.', 'Mariana R.']; name = names[Math.floor(Math.random() * names.length)]; picSeed = getUniqueImageSeed('user_g_'); 
                 content = `<p>${genericPostTexts[Math.floor(Math.random() * genericPostTexts.length)]}</p>`; 
                 media = `<img src="https://picsum.photos/seed/${getUniqueImageSeed('media_g_')}/800/600" alt="Post Content" class="post-image">`; 
             } 
@@ -766,82 +831,89 @@
             const mediaEl = post.querySelector('.post-image, .post-video'); 
             if (mediaEl) { 
                 if (mediaEl.tagName === 'IMG') mediaEl.onerror = function() { handleImageError(this, 800, 600); }; 
-                else if (mediaEl.tagName === 'VIDEO') { mediaEl.onerror = function(e) { handleVideoError(this, e); }; mediaEl.load(); if (videoObserver) videoObserver.observe(mediaEl); } 
+                else if (mediaEl.tagName === 'VIDEO') { 
+                    mediaEl.muted = true; // Novos vídeos nascem mudos
+                    attachVideoListeners(mediaEl);
+                    mediaEl.onerror = function(e) { handleVideoError(this, e); }; 
+                    mediaEl.load(); 
+                } 
             } 
             post.querySelector('.post-profile-pic').onerror = function() { handleImageError(this, 44, 44); }; 
             isLoading = false; 
         }
 
+        // Listener de Scroll unificado para carregar posts E gerenciar foco de vídeo
         window.addEventListener('scroll', debounce(async function() { 
+            // 1. Gerenciamento de Vídeo
+            manageVideoFocus();
+
+            // 2. Carregamento Infinito
             if (mainContent.style.display !== 'none' && ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 900) && !isLoading ) { 
                 if (!isFetchingApi && videoPostsData.filter(v => !usedVideoPostUrls.has(v.url)).length < 5 && apiFetchAttempts < MAX_API_FETCH_ATTEMPTS) { await fetchClassicCartoonsFromAPI(currentApiPage); } 
                 loadMorePosts(); 
             } 
-        }, 250));
+        }, 100)); // Debounce reduzido para 100ms para resposta mais rápida do áudio
 
         function initializeColorPicker() { const picker = document.getElementById('theme-color-picker'); if (picker) picker.addEventListener('input', (e) => document.documentElement.style.setProperty('--primary', e.target.value)); }
         
-        // --- LÓGICA DE TV (CANAIS) ---
-        function renderChannelList() {
-            channelListContainer.innerHTML = `<div class="channel-header"><i class="fas fa-broadcast-tower" style="color: var(--primary);"></i> Canais Ao Vivo</div>`;
-            channels.forEach((channel, index) => {
-                const item = document.createElement('div');
-                item.className = `channel-item ${index === currentChannelIndex ? 'active-channel' : ''}`;
-                item.onclick = () => switchChannel(index);
-                item.innerHTML = `
-                    <div class="channel-icon"><i class="fas ${channel.icon}"></i></div>
-                    <div class="channel-info">
-                        <div>${channel.name}</div>
-                        <div>${channel.desc}</div>
-                    </div>
-                `;
-                channelListContainer.appendChild(item);
-            });
-        }
-
-        function switchChannel(index) {
-            currentChannelIndex = index;
-            renderChannelList(); // Re-render para atualizar classe active
-            playChannel(channels[index]);
-        }
-
-        function playChannel(channelData) {
-            currentChannelTitle.textContent = channelData.name;
-            currentChannelDesc.textContent = channelData.desc;
-            
-            if (Hls.isSupported()) {
-                if (hlsInstance) {
-                    hlsInstance.destroy();
-                }
-                hlsInstance = new Hls();
-                hlsInstance.loadSource(channelData.url);
-                hlsInstance.attachMedia(hlsPlayer);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
-                    hlsPlayer.play().catch(e => console.warn("HLS Playback falhou:", e));
-                });
-                hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+        // --- SISTEMA DE CANAIS DE TV ---
+        function setupHlsPlayer(url) { 
+            if (Hls.isSupported()) { 
+                if (hlsInstance) hlsInstance.destroy(); 
+                hlsInstance = new Hls(); 
+                hlsInstance.loadSource(url); 
+                hlsInstance.attachMedia(hlsPlayer); 
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() { 
+                    hlsPlayer.play().catch(e => console.warn("HLS Playback falhou:", e)); 
+                }); 
+                hlsInstance.on(Hls.Events.ERROR, function(event, data) {
                     if (data.fatal) {
-                         switch(data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                            console.log("Erro de rede fatal, tentando recuperar...");
-                            hlsInstance.startLoad();
-                            break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                            console.log("Erro de mídia fatal, tentando recuperar...");
-                            hlsInstance.recoverMediaError();
-                            break;
-                            default:
-                            hlsInstance.destroy();
-                            break;
-                        }
+                        console.log("Erro fatal HLS, tentando recuperar...");
+                        hlsInstance.recoverMediaError();
                     }
                 });
-            } else if (hlsPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-                hlsPlayer.src = channelData.url;
-                hlsPlayer.addEventListener('loadedmetadata', function() {
-                    hlsPlayer.play().catch(e => console.warn("HLS Nativo Playback falhou:", e));
-                });
-            }
+            } else if (hlsPlayer.canPlayType('application/vnd.apple.mpegurl')) { 
+                hlsPlayer.src = url; 
+                hlsPlayer.addEventListener('loadedmetadata', function() { 
+                    hlsPlayer.play().catch(e => console.warn("HLS Nativo Playback falhou:", e)); 
+                }); 
+            } 
+        }
+
+        function changeChannel(index) {
+            currentChannelIndex = index;
+            const channel = tvChannels[index];
+            
+            // Atualizar UI do Player
+            document.getElementById('current-channel-title').textContent = channel.name;
+            document.getElementById('current-channel-desc').textContent = `${channel.category} • Ao Vivo`;
+            
+            // Atualizar UI da Lista
+            document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+            const items = document.querySelectorAll('.channel-item');
+            if(items[index]) items[index].classList.add('active');
+
+            // Tocar
+            setupHlsPlayer(channel.url);
+        }
+
+        function renderChannelList() {
+            const container = document.getElementById('channels-container');
+            container.innerHTML = '';
+            tvChannels.forEach((channel, index) => {
+                const item = document.createElement('div');
+                item.className = 'channel-item';
+                if(index === currentChannelIndex) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="channel-icon"><i class="${channel.icon}"></i></div>
+                    <div>
+                        <div style="font-weight:600;">${channel.name}</div>
+                        <div style="font-size:0.8rem; color:#888;">${channel.category}</div>
+                    </div>
+                `;
+                item.addEventListener('click', () => changeChannel(index));
+                container.appendChild(item);
+            });
         }
 
         // --- NAVEGAÇÃO ---
@@ -850,29 +922,24 @@
             if (activeIcon) activeIcon.classList.add('active');
         }
         function pauseAllMedia() {
-            document.querySelectorAll('.main-content video').forEach(v => v.pause());
-            // Não paramos o HLS Player se estivermos indo para o Watch, mas se sairmos, sim.
+            document.querySelectorAll('.main-content video, #hls-player').forEach(v => v.pause());
+            if (hlsInstance) hlsInstance.stopLoad();
         }
         function showHomeView() {
             pauseAllMedia();
-            if (hlsInstance) { hlsInstance.stopLoad(); hlsPlayer.pause(); } // Para TV ao sair
             mainContent.style.display = 'block'; watchSection.style.display = 'none'; chatSection.style.display = 'none';
             setActiveIcon(homeIcon);
+            manageVideoFocus(); // Recalcula o foco ao voltar para a home
         }
         function showWatchView() {
             pauseAllMedia();
-            mainContent.style.display = 'none'; watchSection.style.display = 'flex'; chatSection.style.display = 'none';
+            mainContent.style.display = 'none'; watchSection.style.display = 'block'; chatSection.style.display = 'none';
             setActiveIcon(watchIcon); 
-            
-            // Inicializa a TV se for a primeira vez ou retoma
-            if (!hlsInstance || hlsPlayer.paused) {
-                renderChannelList();
-                playChannel(channels[currentChannelIndex]);
-            }
+            renderChannelList();
+            changeChannel(currentChannelIndex); 
         }
         function showChatView() {
             pauseAllMedia();
-            if (hlsInstance) { hlsInstance.stopLoad(); hlsPlayer.pause(); }
             mainContent.style.display = 'none'; watchSection.style.display = 'none'; chatSection.style.display = 'block';
             setActiveIcon(chatIcon);
             if (!chatInitialized) {
@@ -889,7 +956,6 @@
 
         // --- CHAT LOGIC ---
         function displayChatMessage(sender, text, isSentByMe, key) { if (key && displayedMessages.has(key)) return; if(key) displayedMessages.add(key); const initialMsg = messagesDiv.querySelector('.system i'); if (initialMsg) messagesDiv.innerHTML = ''; const msgDiv = document.createElement('div'); msgDiv.className = `message ${isSentByMe ? 'sent' : 'received'}`; const senderStrong = document.createElement('strong'); senderStrong.textContent = isSentByMe ? 'Você' : sender; const textSpan = document.createElement('span'); textSpan.className = 'message-text'; textSpan.textContent = text; msgDiv.appendChild(senderStrong); msgDiv.appendChild(textSpan); messagesDiv.appendChild(msgDiv); messagesDiv.scrollTop = messagesDiv.scrollHeight; }
-        function displaySystemMessage(text) { const p = document.createElement('p'); p.className = 'message system'; p.innerHTML = `<i>${text}</i>`; messagesDiv.appendChild(p); messagesDiv.scrollTop = messagesDiv.scrollHeight; }
         
         function updateUserListUI() {
             [userListUl, userListUlSidebar].forEach(listElement => {
@@ -955,7 +1021,7 @@
         // --- INIT ---
         async function initializeApp() {
             if (appInitialized) return; appInitialized = true;
-            initializeVideoObserver(); initializeColorPicker(); setupNavigation();
+            initializeColorPicker(); setupNavigation();
             try { await fetchClassicCartoonsFromAPI(currentApiPage); if (videoPostsData.length < 10) await fetchClassicCartoonsFromAPI(currentApiPage); } catch(error) {}
             setInitialMedia(); loadMorePosts(); loadMorePosts();
             showHomeView();

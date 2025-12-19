@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Societe - macOS Style</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+
+    <style>
+        :root {
+            /* Palette macOS */
+            --app-bg: #F5F5F7;
+            --surface: #FFFFFF;
+            --surface-translucent: rgba(255, 255, 255, 0.85);
+            --primary: #007AFF; /* Apple Blue */
+            --primary-hover: #0062cc;
+            --text-primary: #1D1D1F;
+            --text-secondary: #86868B;
+            --divider: rgba(0, 0, 0, 0.05);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 12px 24px rgba(0,0,0,0.12);
+            --radius-sm: 10px;
+            --radius-md: 18px;
+            --radius-lg: 24px;
+            
+            /* Chat Specifics (iMessage style) */
+            --chat-bubble-sent: #007AFF;
+            --chat-bubble-received: #E9E9EB;
+            --chat-text-sent: #FFFFFF;
+            --chat-text-received: #000000;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--app-bg);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            overflow-y: scroll;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #D1D1D6; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #aeaeb2; }
+
+        /* --- Pop-up Overlay --- */
+        #name-popup-overlay {
+            position: fixed; inset: 0;
+            background-color: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(15px);
+            display: none;
+            justify-content: center; align-items: center; z-index: 2000;
+            opacity: 0; transition: opacity 0.4s ease;
+        }
+        #name-popup-overlay.visible { display: flex; opacity: 1; }
+        
+        #name-popup {
+            background-color: var(--surface);
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            text-align: center; width: 90%; max-width: 380px;
+            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #name-popup-overlay.visible #name-popup { transform: scale(1); }
+        
+        #name-popup h2 { margin-bottom: 10px; font-weight: 600; font-size: 1.5rem; }
+        #name-popup p { color: var(--text-secondary); margin-bottom: 30px; }
+        
+        #name-popup input {
+            width: 100%; padding: 12px 16px; margin-bottom: 20px;
+            border: 1px solid #d2d2d7; border-radius: 12px;
+            background: #F5F5F7; font-size: 1rem; outline: none;
+            transition: all 0.2s;
+        }
+        #name-popup input:focus { background: #fff; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15); }
+        
+        #name-popup button {
+            background-color: var(--primary); color: white; border: none;
+            padding: 12px 30px; border-radius: 50px; cursor: pointer;
+            font-size: 1rem; font-weight: 500; width: 100%;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        #name-popup button:hover { background-color: var(--primary-hover); }
+        #name-popup button:active { transform: scale(0.98); }
+
+        /* --- Navbar --- */
+        .navbar {
+            background-color: var(--surface-translucent);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            height: 60px; display: flex;
+            justify-content: space-between; align-items: center; padding: 0 30px;
+            position: sticky; top: 0; z-index: 1000;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .logo { font-size: 20px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; cursor: pointer; }
+        
+        .search { width: 35%; max-width: 400px; }
+        .search input {
+            width: 100%; padding: 8px 36px 8px 16px;
+            border-radius: 10px; border: none;
+            background-color: rgba(118, 118, 128, 0.12);
+            color: var(--text-primary); outline: none;
+            font-size: 14px; transition: background 0.2s;
+        }
+        .search input:focus { background-color: #fff; box-shadow: 0 0 0 1px var(--primary); }
+        
+        .icons { display: flex; gap: 20px; }
+        .icon {
+            color: var(--text-secondary); cursor: pointer; font-size: 18px;
+            position: relative; transition: color 0.2s;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            border-radius: 10px;
+        }
+        .icon:hover { background-color: rgba(0,0,0,0.05); color: var(--text-primary); }
+        .icon.active { color: var(--primary); background-color: rgba(0, 122, 255, 0.1); }
+
+        /* --- Layout Container --- */
+        .container {
+            display: grid;
+            grid-template-columns: 280px minmax(500px, 680px) 280px;
+            gap: 30px;
+            max-width: 1300px; margin: 30px auto; padding: 0 20px;
+            opacity: 0; visibility: hidden; transition: opacity 0.5s;
+        }
+        .container.visible { opacity: 1; visibility: visible; }
+
+        .sidebar, .right-sidebar { position: sticky; top: 90px; height: fit-content; }
+
+        /* --- Cards & General Styling --- */
+        .card-base {
+            background-color: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        /* --- Sidebar Profile --- */
+        .profile-card { text-align: center; }
+        .profile-pic {
+            width: 100px; height: 100px; border-radius: 50%;
+            object-fit: cover; margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+        .profile-info h3 { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+        .profile-info p { font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px; }
+
+        .menu-item {
+            display: flex; align-items: center; padding: 12px 16px;
+            border-radius: var(--radius-sm); color: var(--text-primary);
+            cursor: pointer; transition: background 0.2s; font-weight: 500; font-size: 0.95rem;
+        }
+        .menu-item:hover { background-color: rgba(0,0,0,0.04); }
+        .menu-item i { width: 24px; margin-right: 12px; color: var(--primary); }
+
+        /* --- Create Post --- */
+        .create-post .post-input { display: flex; align-items: center; margin-bottom: 16px; }
+        .create-post img { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; }
+        .create-post input {
+            flex: 1; padding: 12px 16px; border-radius: 20px;
+            border: none; background: #F5F5F7; outline: none;
+            transition: background 0.2s;
+        }
+        .create-post input:hover { background: #E9E9EB; }
+        
+        .post-options { display: flex; justify-content: space-between; border-top: 1px solid var(--divider); padding-top: 16px; }
+        .post-option {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; color: var(--text-secondary);
+            cursor: pointer; padding: 8px 12px; border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .post-option:hover { background: #F5F5F7; }
+
+        /* --- Posts --- */
+        .post-header { display: flex; align-items: center; margin-bottom: 16px; }
+        .post-header img { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
+        .post-user { font-weight: 600; font-size: 0.95rem; }
+        .post-time { font-size: 0.8rem; color: var(--text-secondary); }
+        
+        .post-content { font-size: 0.95rem; line-height: 1.6; margin-bottom: 16px; color: #333; }
+        .post-image, .post-video {
+            width: 100%; border-radius: 12px; margin-bottom: 16px;
+            border: 1px solid rgba(0,0,0,0.03); display: block;
+        }
+
+        .post-stats {
+            display: flex; justify-content: space-between;
+            font-size: 0.85rem; color: var(--text-secondary);
+            padding-bottom: 12px; border-bottom: 1px solid var(--divider); margin-bottom: 12px;
+        }
+        
+        .post-actions { display: flex; justify-content: space-around; }
+        .post-action {
+            display: flex; align-items: center; gap: 8px; padding: 8px 24px;
+            border-radius: 8px; color: var(--text-secondary);
+            font-weight: 500; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;
+        }
+        .post-action:hover { background: rgba(0, 122, 255, 0.08); color: var(--primary); }
+
+        /* --- Watch Section (TV Style) --- */
+        #watch-section { display: none; flex-direction: column; width: 100%; }
+        
+        .tv-container {
+            display: flex; gap: 20px;
+            height: calc(100vh - 150px);
+        }
+        
+        .tv-screen {
+            flex: 3;
+            background: #000;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex; flex-direction: column;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .tv-screen video { width: 100%; height: 100%; object-fit: contain; }
+        
+        .channel-list {
+            flex: 1;
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            overflow-y: auto;
+            display: flex; flex-direction: column;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .channel-header {
+            padding: 20px; border-bottom: 1px solid var(--divider);
+            font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 10px;
+        }
+        
+        .channel-item {
+            padding: 15px 20px; border-bottom: 1px solid var(--divider);
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;
+        }
+        .channel-item:hover { background-color: #f2f2f7; }
+        .channel-item.active-channel { background-color: rgba(0, 122, 255, 0.1); border-left: 4px solid var(--primary); }
+        .channel-icon {
+            width: 40px; height: 40px; background: #e5e5ea; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+        }
+        .channel-info div:first-child { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
+        .channel-info div:last-child { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+
+        /* --- Chat Section --- */
+        #chat-section { display: none; height: calc(100vh - 120px); }
+        
+        .chat-container {
+            display: flex; height: 100%;
+            background: var(--surface); border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg); overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .chat-sidebar {
+            width: 280px; background: rgba(245, 245, 247, 0.5);
+            border-right: 1px solid var(--divider); display: flex; flex-direction: column;
+        }
+        
+        .chat-sidebar h2 {
+            padding: 20px; font-size: 0.8rem; text-transform: uppercase;
+            letter-spacing: 1px; color: var(--text-secondary);
+            border-bottom: 1px solid var(--divider);
+        }
+
+        #user-list, #user-list-sidebar { list-style: none; overflow-y: auto; }
+        #user-list li, #user-list-sidebar li {
+            padding: 12px 20px; border-bottom: 1px solid var(--divider);
+            cursor: pointer; display: flex; align-items: center; gap: 10px;
+            font-size: 0.9rem; transition: background 0.2s;
+        }
+        #user-list li:hover, #user-list-sidebar li:hover { background: rgba(0,0,0,0.03); }
+        
+        li.online::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #34C759; border-radius: 50%; }
+        li.stale::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #FF9F0A; border-radius: 50%; }
+        li.offline::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #C7C7CC; border-radius: 50%; }
+
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: #fff; position: relative; }
+        
+        .main-chat h1 {
+            padding: 16px 24px; font-size: 1rem; font-weight: 600;
+            border-bottom: 1px solid var(--divider); text-align: center;
+        }
+
+        #messages {
+            flex: 1; padding: 20px; overflow-y: scroll;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+
+        .message {
+            max-width: 70%; padding: 10px 16px; border-radius: 20px;
+            font-size: 0.95rem; line-height: 1.4; position: relative; word-wrap: break-word;
+        }
+        .message.sent {
+            align-self: flex-end;
+            background-color: var(--chat-bubble-sent); color: var(--chat-text-sent);
+            border-bottom-right-radius: 4px;
+        }
+        .message.received {
+            align-self: flex-start;
+            background-color: var(--chat-bubble-received); color: var(--chat-text-received);
+            border-bottom-left-radius: 4px;
+        }
+        .message strong { display: block; font-size: 0.75rem; opacity: 0.7; margin-bottom: 2px; }
+        .message.system { align-self: center; background: none; color: var(--text-secondary); font-size: 0.8rem; font-style: italic; }
+
+        #chat-input-area {
+            padding: 16px; border-top: 1px solid var(--divider);
+            display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,0.8);
+        }
+        
+        #message-input {
+            flex: 1; padding: 10px 16px; border-radius: 20px;
+            border: 1px solid #d2d2d7; outline: none; transition: border 0.2s;
+        }
+        #message-input:focus { border-color: var(--primary); }
+        
+        #send-btn {
+            background: none; color: var(--primary); font-weight: 600;
+            border: none; cursor: pointer; font-size: 1rem;
+        }
+        #send-btn:hover { color: var(--primary-hover); }
+
+        #emoji-panel {
+            position: absolute; bottom: 70px; left: 20px;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            border-radius: 12px; padding: 12px; box-shadow: var(--shadow-lg);
+            display: none; grid-template-columns: repeat(7, 1fr); gap: 8px; border: 1px solid var(--divider);
+        }
+        #emoji-panel span { cursor: pointer; font-size: 1.4rem; padding: 4px; border-radius: 5px; text-align: center;}
+        #emoji-panel span:hover { background: #f0f0f0; }
+
+        /* --- Right Sidebar Widgets --- */
+        .right-sidebar .title {
+            font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);
+            text-transform: uppercase; margin-bottom: 12px; padding-left: 4px;
+        }
+        
+        .color-picker-content input[type="color"] {
+            width: 30px; height: 30px; border: none; border-radius: 50%;
+            padding: 0; cursor: pointer;
+        }
+
+        #loading-indicator { text-align: center; color: var(--text-secondary); padding: 20px; font-size: 0.9rem; }
+
+        /* --- Responsividade --- */
+        @media (max-width: 1100px) {
+            .container { grid-template-columns: 240px 1fr; }
+            .right-sidebar { display: none; }
+        }
+        @media (max-width: 900px) {
+             .tv-container { flex-direction: column; height: auto; }
+             .tv-screen { height: 300px; flex: none; }
+             .channel-list { height: 300px; flex: none; }
+        }
+        @media (max-width: 800px) {
+            .container { grid-template-columns: 1fr; max-width: 600px; }
+            .sidebar { display: none; }
+            .search { display: none; }
+            .chat-sidebar { display: none; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="name-popup-overlay">
+        <div id="name-popup">
+            <h2>Bem-vindo ao Societe</h2>
+            <p>Conecte-se com simplicidade. Como devemos chamar você?</p>
+            <input type="text" id="user-name-input" placeholder="Seu nome">
+            <button id="confirm-name-btn">Entrar</button>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">Societe</div>
+        <div class="search">
+            <input type="text" placeholder="Buscar...">
+        </div>
+        <div class="icons">
+            <div class="icon active" title="Início"><i class="fas fa-home"></i></div>
+            <div class="icon" title="Watch"><i class="fas fa-tv"></i></div>
+            <div class="icon" title="Chat"><i class="fas fa-comment-alt"></i></div>
+            <div class="icon" title="Notificações"><i class="fas fa-bell"></i></div>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        <div class="sidebar">
+            <div class="card-base profile-card">
+                <div class="profile-info">
+                    <img id="profile-pic" src="" alt="Profile" class="profile-pic">
+                    <h3 id="profile-name">Visitante</h3>
+                    <p>Web Designer & Enthusiast</p>
+                </div>
+            </div>
+            <div class="card-base">
+                 <div class="menu-item"><i class="fas fa-user-friends"></i><span>Amigos</span></div>
+                 <div class="menu-item"><i class="fas fa-bookmark"></i><span>Salvos</span></div>
+                 <div class="menu-item"><i class="fas fa-clock"></i><span>Memórias</span></div>
+                 <div class="menu-item"><i class="fas fa-calendar-alt"></i><span>Eventos</span></div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card-base create-post"> 
+                <div class="post-input"> 
+                    <img id="create-post-pic" src="" alt="User"> 
+                    <input type="text" id="create-post-input" placeholder="O que está acontecendo?"> 
+                </div> 
+                <div class="post-options"> 
+                    <div class="post-option"><i class="fas fa-video" style="color: #FF3B30;"></i><span>Live</span></div> 
+                    <div class="post-option"><i class="fas fa-image" style="color: #34C759;"></i><span>Mídia</span></div> 
+                    <div class="post-option"><i class="fas fa-smile" style="color: #FF9F0A;"></i><span>Sentimento</span></div> 
+                </div> 
+            </div> 
+
+            <div class="card-base post"> 
+                <div class="post-header"> 
+                    <img id="post-pic-1" src="" alt="User"> 
+                    <div> 
+                        <div class="post-user">Maria Oliveira</div> 
+                        <div class="post-time">2 horas atrás</div> 
+                    </div> 
+                </div> 
+                <div class="post-content"> 
+                    <p>Design minimalista traz clareza para a mente. Adorando o novo visual!</p> 
+                </div> 
+                <img id="post-media-1" src="" alt="Post Image" class="post-image"> 
+                <div class="post-stats"> 
+                    <div><i class="fas fa-heart" style="color:#FF3B30"></i> 245</div> 
+                    <div>48 comentários</div> 
+                </div> 
+                <div class="post-actions"> 
+                    <div class="post-action"><i class="far fa-heart"></i><span>Curtir</span></div> 
+                    <div class="post-action"><i class="far fa-comment"></i><span>Comentar</span></div> 
+                    <div class="post-action"><i class="fas fa-share"></i><span>Enviar</span></div> 
+                </div> 
+            </div> 
+
+            <div class="card-base post" id="initial-video-post"> 
+                <div class="post-header"> 
+                    <img id="post-pic-2" src="" alt="User"> 
+                    <div> 
+                        <div class="post-user">Carregando...</div> 
+                        <div class="post-time">Em destaque</div> 
+                    </div> 
+                </div> 
+                <div class="post-content"><p>Conteúdo clássico selecionado para você.</p></div> 
+                <video id="post-media-2" class="post-video" controls autoplay muted playsinline preload="metadata"> 
+                    <source src="" type="video/mp4"> 
+                </video> 
+                <div class="post-actions"> 
+                    <div class="post-action"><i class="far fa-heart"></i><span>Curtir</span></div> 
+                    <div class="post-action"><i class="far fa-comment"></i><span>Comentar</span></div> 
+                </div> 
+            </div> 
+
+            <div id="loading-indicator"><i class="fas fa-spinner fa-spin"></i> Carregando feed...</div>
+        </div>
+
+        <div id="watch-section" class="main-content" style="width: 100%;">
+            <div class="tv-container">
+                <div class="tv-screen">
+                    <video id="hls-player" controls autoplay muted></video>
+                    <div style="padding: 15px; color: white; background: #222;">
+                        <h3 id="current-channel-title">Carregando...</h3>
+                        <p id="current-channel-desc" style="font-size: 0.9rem; color: #aaa;">Sinal ao vivo</p>
+                    </div>
+                </div>
+                <div class="channel-list" id="channel-list-container">
+                    <div class="channel-header">
+                        <i class="fas fa-broadcast-tower" style="color: var(--primary);"></i> Canais Ao Vivo
+                    </div>
+                    </div>
+             </div>
+        </div>
+
+        <div id="chat-section">
+            <div class="chat-container">
+                <div class="chat-sidebar">
+                    <div style="padding: 20px;">
+                        <div id="username-display" style="font-weight: 600; font-size: 0.9rem;">Você: ...</div>
+                        <div id="status" style="font-size: 0.8rem; color: #86868b;">Status: Offline</div>
+                    </div>
+                    <h2>Ativos Agora</h2>
+                    <ul id="user-list"> <li>Conectando...</li> </ul>
+                </div>
+                <div class="main-chat">
+                    <h1>Chat Global</h1>
+                    <div id="messages">
+                        <p class="message system"><i>Bem-vindo ao chat seguro.</i></p>
+                    </div>
+                    <div id="chat-input-area">
+                        <button id="emoji-btn" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">😊</button>
+                        <input type="text" id="message-input" placeholder="iMessage...">
+                        <button id="send-btn">Enviar</button>
+                    </div>
+                    <div id="emoji-panel">
+                          <span>😀</span> <span>😂</span> <span>❤️</span> <span>👍</span> <span>🎉</span> <span>🤔</span> <span>🚀</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-sidebar">
+            <div class="card-base online-users-sidebar">
+                <div class="title">Contatos Rápidos</div>
+                <ul id="user-list-sidebar">
+                    <li>(Offline)</li>
+                </ul>
+            </div>
+            <div class="card-base color-picker-section">
+                <div class="title">Cor do Tema</div>
+                <div class="color-picker-content" style="display:flex; align-items:center; gap:10px;">
+                    <input type="color" id="theme-color-picker" value="#007AFF">
+                    <span style="font-size:0.9rem;">Toque para alterar</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- LÓGICA GERAL ---
+        const popupOverlay = document.getElementById('name-popup-overlay');
+        const confirmButton = document.getElementById('confirm-name-btn');
+        const nameInput = document.getElementById('user-name-input');
+        const profileNameElement = document.getElementById('profile-name');
+        const createPostInputElement = document.getElementById('create-post-input');
+        const containerElement = document.querySelector('.container');
+        let appInitialized = false;
+        let isLoading = false;
+        const usedImageSeeds = new Set();
+        let videoPostsData = [];
+        const usedVideoPostUrls = new Set();
+        let videoObserver;
+        let currentApiPage = 1;
+        let isFetchingApi = false;
+        let apiFetchAttempts = 0;
+        const MAX_API_FETCH_ATTEMPTS = 5;
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const genericPostTexts = [ "Adoro esses clássicos!", "Animação old school é outra vibe.", "Alguém assistindo o canal de variedades?", "Testando o novo layout de TV...", "Isso sim é desenho de verdade." ];
+        
+        const homeIcon = document.querySelector('.icon[title="Início"]');
+        const watchIcon = document.querySelector('.icon[title="Watch"]');
+        const chatIcon = document.querySelector('.icon[title="Chat"]');
+        const mainContent = document.querySelector('.main-content'); // Feed Wrapper
+        
+        // --- CONFIGURAÇÃO DA TV ---
+        const watchSection = document.getElementById('watch-section');
+        const chatSection = document.getElementById('chat-section');
+        const hlsPlayer = document.getElementById('hls-player');
+        const channelListContainer = document.getElementById('channel-list-container');
+        const currentChannelTitle = document.getElementById('current-channel-title');
+        const currentChannelDesc = document.getElementById('current-channel-desc');
+        let hlsInstance = null;
+
+        // Lista de Canais (TV)
+        const channels = [
+            {
+                name: "Variedades (SoulTV)",
+                url: "https://video01.soultv.com.br/timesbrasil/timesbrasil/playlist.m3u8",
+                icon: "fa-star",
+                desc: "Entretenimento geral e variedades."
+            },
+            {
+                name: "NASA Public",
+                url: "https://ntv1.akamaized.net/hls/live/2013530/NASA-TV-Public/master.m3u8",
+                icon: "fa-rocket",
+                desc: "Exploração espacial ao vivo."
+            },
+            {
+                name: "Red Bull TV",
+                url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
+                icon: "fa-bolt",
+                desc: "Esportes radicais e eventos."
+            },
+            {
+                name: "Al Jazeera English",
+                url: "https://live-hls-web-aje.getaj.net/AJE/03.m3u8",
+                icon: "fa-globe",
+                desc: "Notícias internacionais 24h."
+            },
+            {
+                name: "Rakuten Action",
+                url: "https://rakuten-actionmovies-1-eu.rakuten.wurl.tv/playlist.m3u8",
+                icon: "fa-film",
+                desc: "Filmes de ação clássicos."
+            }
+        ];
+        
+        let currentChannelIndex = 0;
+
+        // --- SCRIPT CHAT ---
+        const usernameDisplay = document.getElementById('username-display');
+        const statusDiv = document.getElementById('status');
+        const userListUl = document.getElementById('user-list');
+        const userListUlSidebar = document.getElementById('user-list-sidebar'); 
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const emojiBtn = document.getElementById('emoji-btn');
+        const emojiPanel = document.getElementById('emoji-panel');
+        let gun = null; let user = null; let chatUsername = '';
+        const onlineUsers = new Map();
+        const HEARTBEAT_INTERVAL = 15000; const STALE_THRESHOLD = 45000;
+        const displayedMessages = new Set();
+        let chatInitialized = false;
+
+        // --- FUNÇÕES POP-UP ---
+        function updateUserInfo(userName) {
+            profileNameElement.textContent = userName;
+            createPostInputElement.placeholder = `No que você está pensando, ${userName}?`;
+        }
+        function showApp() {
+            popupOverlay.classList.remove('visible'); 
+            containerElement.classList.add('visible');
+            setTimeout(() => { popupOverlay.style.display = 'none'; }, 400);
+        }
+        function confirmNameAndStart() {
+            const userName = nameInput.value.trim();
+            if (userName) {
+                localStorage.setItem('userName', userName);
+                updateUserInfo(userName); showApp(); initializeApp();
+            } else { alert("Por favor, insira um nome."); nameInput.focus(); }
+        }
+        confirmButton.addEventListener('click', confirmNameAndStart);
+        nameInput.addEventListener('keypress', (event) => { if (event.key === 'Enter') { event.preventDefault(); confirmNameAndStart(); } });
+        window.addEventListener('load', () => {
+            const savedName = localStorage.getItem('userName');
+            if (savedName) {
+                updateUserInfo(savedName); showApp(); initializeApp();
+            } else {
+                popupOverlay.style.display = 'flex';
+                setTimeout(() => { popupOverlay.classList.add('visible'); nameInput.focus(); }, 10);
+            }
+            updateUserListUI(); 
+        });
+
+        // --- UTILITÁRIOS ---
+        function debounce(func, wait) { let timeout; return function executedFunction(...args) { const later = () => { clearTimeout(timeout); func(...args); }; clearTimeout(timeout); timeout = setTimeout(later, wait); }; }
+        function getUniqueImageSeed(prefix = '') { let seed; const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; do { seed = prefix; for (let i = 0; i < 10; i++) { seed += chars.charAt(Math.floor(Math.random() * chars.length)); } } while (usedImageSeeds.has(seed)); usedImageSeeds.add(seed); return seed; }
+        function showLoadingIndicator(show) { if (loadingIndicator) { loadingIndicator.style.display = show ? 'block' : 'none'; } }
+        
+        // --- API & MÍDIA (EXPANDIDA) ---
+        async function fetchClassicCartoonsFromAPI(page = 1) { 
+            if (isFetchingApi) return false; 
+            isFetchingApi = true; 
+            showLoadingIndicator(true); 
+            apiFetchAttempts++; 
+            
+            // Termos de busca expandidos para Golden Age, Looney Tunes, etc.
+            const queryTerms = [
+                'collection:animationandcartoons OR collection:feature_films',
+                'mediatype:movies',
+                '(title:Popeye OR title:"Betty Boop" OR title:Superman OR title:"Looney Tunes" OR title:"Merry Melodies" OR title:"Tom and Jerry" OR title:"Woody Woodpecker" OR title:"Felix the Cat" OR title:"Three Stooges" OR title:"Charlie Chaplin" OR title:"Buster Keaton" OR subject:"classic animation" OR subject:"golden age animation")',
+                '(format:"MPEG4" OR format:"h.264" OR format:"512Kb MPEG4")'
+            ]; 
+            
+            const encodedQuery = encodeURIComponent(queryTerms.join(" AND ")); 
+            const fieldsToFetch = "identifier,title,description,year,format,name,original"; 
+            const apiUrl = `https://archive.org/advancedsearch.php?q=${encodedQuery}&fl[]=${fieldsToFetch}&sort[]=downloads+desc&rows=25&page=${page}&output=json`; 
+            
+            let newVideosFound = false; 
+            try { 
+                const response = await fetch(apiUrl, { signal: AbortSignal.timeout(15000) }); 
+                if (!response.ok) throw new Error(`API Error: ${response.status}`); 
+                const data = await response.json(); 
+                if (data.response && data.response.docs && data.response.docs.length > 0) { 
+                    data.response.docs.forEach(doc => { 
+                        if (doc.identifier && doc.title) { 
+                            let mp4FileName = null, mp4Url = null; 
+                            const formats = Array.isArray(doc.format) ? doc.format : [doc.format]; 
+                            const names = Array.isArray(doc.name) ? doc.name : [doc.name]; 
+                            if (doc.original?.toLowerCase().endsWith('.mp4')) mp4FileName = doc.original; 
+                            else if (names.some(n => n?.toLowerCase().endsWith('.mp4'))) mp4FileName = names.find(n => n?.toLowerCase().endsWith('.mp4')); 
+                            else if (formats.includes("512Kb MPEG4")) mp4FileName = `${doc.identifier}_512kb.mp4`; 
+                            else if (formats.includes("MPEG4") || formats.includes("H.264")) mp4FileName = names.find(n => n?.toLowerCase().includes('mpeg4') && n.toLowerCase().endsWith('.mp4')) || `${doc.identifier}.mp4`; 
+                            
+                            if (mp4FileName) { 
+                                mp4Url = `https://archive.org/download/${doc.identifier}/${encodeURIComponent(mp4FileName)}`; 
+                                if (!videoPostsData.some(v => v.url === mp4Url) && !usedVideoPostUrls.has(mp4Url)) { 
+                                    videoPostsData.push({ 
+                                        title: doc.title + (doc.year ? ` (${doc.year})` : ''), 
+                                        url: mp4Url, 
+                                        description: doc.description ? (Array.isArray(doc.description) ? doc.description.join(' ') : doc.description.substring(0, 100) + '...') : `Um clássico da Era de Ouro.` 
+                                    }); 
+                                    newVideosFound = true; 
+                                } 
+                            } 
+                        } 
+                    }); 
+                    if (newVideosFound) { currentApiPage = page + 1; apiFetchAttempts = 0; } 
+                } 
+            } catch (error) { console.error("API Fetch: Falha:", error); } 
+            isFetchingApi = false; showLoadingIndicator(false); 
+            return newVideosFound; 
+        }
+
+        function getUniqueVideoPostData() { let available = videoPostsData.filter(v => !usedVideoPostUrls.has(v.url)); if (available.length === 0 && videoPostsData.length > 0) { usedVideoPostUrls.clear(); available = [...videoPostsData]; } if (available.length === 0) { return null; } const video = available[Math.floor(Math.random() * available.length)]; usedVideoPostUrls.add(video.url); return video; }
+        function handleImageError(img, w = 200, h = 200) { img.src = `https://picsum.photos/seed/${getUniqueImageSeed('fallback_')}/${img.width || w}/${img.height || h}`; img.onerror = null; }
+        function handleVideoError(vid, e) { const src = vid.querySelector('source')?.src || vid.currentSrc; console.error(`Video Error: ${src}`); usedVideoPostUrls.add(src); vid.closest('.post').style.display = 'none'; }
+        
+        function initializeVideoObserver() { videoObserver = new IntersectionObserver((entries) => { entries.forEach(entry => { const video = entry.target; if (video.id === 'hls-player') return; if (entry.isIntersecting) { if (video.paused && video.readyState >= 2) video.play().catch(e => console.warn(`Play Falhou:`, e.message)); else if (video.readyState < 2) video.load(); } else { if (!video.paused) video.pause(); } }); }, { root: null, rootMargin: '200px 0px', threshold: 0.1 }); }
+
+        function setInitialMedia() { 
+            ['profile-pic', 'create-post-pic', 'post-pic-1', 'post-pic-2', 'post-media-1'].forEach(id => { 
+                const el = document.getElementById(id); if (!el) return; 
+                const size = id.includes('pic') ? '100/100' : '800/600'; 
+                el.src = `https://picsum.photos/seed/${getUniqueImageSeed(id)}/${size}`; 
+                el.onerror = function() { handleImageError(this); }; 
+            }); 
+            const initialVideoPost = document.getElementById('initial-video-post'); 
+            const videoData = getUniqueVideoPostData(); 
+            if (videoData?.url) { 
+                initialVideoPost.style.display = 'block'; 
+                initialVideoPost.querySelector('.post-user').textContent = videoData.title; 
+                const videoEl = initialVideoPost.querySelector('video'); 
+                videoEl.querySelector('source').src = videoData.url; 
+                videoEl.load(); if (videoObserver) videoObserver.observe(videoEl); 
+            } else { initialVideoPost.style.display = 'none'; } 
+        }
+
+        function loadMorePosts() { 
+            if (isLoading) return; isLoading = true; 
+            const feedContainer = document.querySelector('.main-content'); 
+            const post = document.createElement('div'); post.className = 'card-base post'; 
+            const likes = Math.floor(Math.random() * 700) + 50, comments = Math.floor(Math.random() * 150) + 5; 
+            const videoData = getUniqueVideoPostData(); const isVideo = !!videoData; 
+            let name, picSeed, content, media; 
+            
+            if (isVideo) { 
+                name = videoData.title; picSeed = getUniqueImageSeed('user_v_'); 
+                content = `<p>Exibindo clássico: <strong>"${videoData.title}"</strong>.</p>`; 
+                media = `<video class="post-video" controls autoplay muted playsinline preload="metadata"><source src="${videoData.url}" type="video/mp4"></video>`; 
+            } else { 
+                const names = ['Lucas P.', 'Ana B.', 'Pedro A.', 'Mariana R.', 'Carlos D.', 'Julia S.']; name = names[Math.floor(Math.random() * names.length)]; picSeed = getUniqueImageSeed('user_g_'); 
+                content = `<p>${genericPostTexts[Math.floor(Math.random() * genericPostTexts.length)]}</p>`; 
+                media = `<img src="https://picsum.photos/seed/${getUniqueImageSeed('media_g_')}/800/600" alt="Post Content" class="post-image">`; 
+            } 
+            post.innerHTML = `<div class="post-header"><img src="https://picsum.photos/seed/${picSeed}/44/44" alt="User" class="post-profile-pic"><div><div class="post-user">${name}</div><div class="post-time">Recentemente</div></div></div><div class="post-content">${content}</div>${media}<div class="post-stats"><div><i class="fas fa-heart" style="color:#FF3B30"></i> ${likes}</div><div>${comments} com.</div></div><div class="post-actions"><div class="post-action"><i class="far fa-heart"></i><span>Curtir</span></div><div class="post-action"><i class="far fa-comment"></i><span>Comentar</span></div></div>`; 
+            
+            const loading = document.getElementById('loading-indicator');
+            feedContainer.insertBefore(post, loading); 
+            
+            const mediaEl = post.querySelector('.post-image, .post-video'); 
+            if (mediaEl) { 
+                if (mediaEl.tagName === 'IMG') mediaEl.onerror = function() { handleImageError(this, 800, 600); }; 
+                else if (mediaEl.tagName === 'VIDEO') { mediaEl.onerror = function(e) { handleVideoError(this, e); }; mediaEl.load(); if (videoObserver) videoObserver.observe(mediaEl); } 
+            } 
+            post.querySelector('.post-profile-pic').onerror = function() { handleImageError(this, 44, 44); }; 
+            isLoading = false; 
+        }
+
+        window.addEventListener('scroll', debounce(async function() { 
+            if (mainContent.style.display !== 'none' && ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 900) && !isLoading ) { 
+                if (!isFetchingApi && videoPostsData.filter(v => !usedVideoPostUrls.has(v.url)).length < 5 && apiFetchAttempts < MAX_API_FETCH_ATTEMPTS) { await fetchClassicCartoonsFromAPI(currentApiPage); } 
+                loadMorePosts(); 
+            } 
+        }, 250));
+
+        function initializeColorPicker() { const picker = document.getElementById('theme-color-picker'); if (picker) picker.addEventListener('input', (e) => document.documentElement.style.setProperty('--primary', e.target.value)); }
+        
+        // --- LÓGICA DE TV (CANAIS) ---
+        function renderChannelList() {
+            channelListContainer.innerHTML = `<div class="channel-header"><i class="fas fa-broadcast-tower" style="color: var(--primary);"></i> Canais Ao Vivo</div>`;
+            channels.forEach((channel, index) => {
+                const item = document.createElement('div');
+                item.className = `channel-item ${index === currentChannelIndex ? 'active-channel' : ''}`;
+                item.onclick = () => switchChannel(index);
+                item.innerHTML = `
+                    <div class="channel-icon"><i class="fas ${channel.icon}"></i></div>
+                    <div class="channel-info">
+                        <div>${channel.name}</div>
+                        <div>${channel.desc}</div>
+                    </div>
+                `;
+                channelListContainer.appendChild(item);
+            });
+        }
+
+        function switchChannel(index) {
+            currentChannelIndex = index;
+            renderChannelList(); // Re-render para atualizar classe active
+            playChannel(channels[index]);
+        }
+
+        function playChannel(channelData) {
+            currentChannelTitle.textContent = channelData.name;
+            currentChannelDesc.textContent = channelData.desc;
+            
+            if (Hls.isSupported()) {
+                if (hlsInstance) {
+                    hlsInstance.destroy();
+                }
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(channelData.url);
+                hlsInstance.attachMedia(hlsPlayer);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+                    hlsPlayer.play().catch(e => console.warn("HLS Playback falhou:", e));
+                });
+                hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                         switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                            console.log("Erro de rede fatal, tentando recuperar...");
+                            hlsInstance.startLoad();
+                            break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                            console.log("Erro de mídia fatal, tentando recuperar...");
+                            hlsInstance.recoverMediaError();
+                            break;
+                            default:
+                            hlsInstance.destroy();
+                            break;
+                        }
+                    }
+                });
+            } else if (hlsPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                hlsPlayer.src = channelData.url;
+                hlsPlayer.addEventListener('loadedmetadata', function() {
+                    hlsPlayer.play().catch(e => console.warn("HLS Nativo Playback falhou:", e));
+                });
+            }
+        }
+
+        // --- NAVEGAÇÃO ---
+        function setActiveIcon(activeIcon) {
+            document.querySelectorAll('.icon').forEach(icon => icon.classList.remove('active'));
+            if (activeIcon) activeIcon.classList.add('active');
+        }
+        function pauseAllMedia() {
+            document.querySelectorAll('.main-content video').forEach(v => v.pause());
+            // Não paramos o HLS Player se estivermos indo para o Watch, mas se sairmos, sim.
+        }
+        function showHomeView() {
+            pauseAllMedia();
+            if (hlsInstance) { hlsInstance.stopLoad(); hlsPlayer.pause(); } // Para TV ao sair
+            mainContent.style.display = 'block'; watchSection.style.display = 'none'; chatSection.style.display = 'none';
+            setActiveIcon(homeIcon);
+        }
+        function showWatchView() {
+            pauseAllMedia();
+            mainContent.style.display = 'none'; watchSection.style.display = 'flex'; chatSection.style.display = 'none';
+            setActiveIcon(watchIcon); 
+            
+            // Inicializa a TV se for a primeira vez ou retoma
+            if (!hlsInstance || hlsPlayer.paused) {
+                renderChannelList();
+                playChannel(channels[currentChannelIndex]);
+            }
+        }
+        function showChatView() {
+            pauseAllMedia();
+            if (hlsInstance) { hlsInstance.stopLoad(); hlsPlayer.pause(); }
+            mainContent.style.display = 'none'; watchSection.style.display = 'none'; chatSection.style.display = 'block';
+            setActiveIcon(chatIcon);
+            if (!chatInitialized) {
+                const currentUserName = localStorage.getItem('userName');
+                if (currentUserName) { startChat(currentUserName); chatInitialized = true; }
+                else { alert("Defina seu nome primeiro."); showHomeView(); }
+            }
+        }
+        function setupNavigation() {
+            homeIcon.addEventListener('click', showHomeView);
+            watchIcon.addEventListener('click', showWatchView);
+            chatIcon.addEventListener('click', showChatView);
+        }
+
+        // --- CHAT LOGIC ---
+        function displayChatMessage(sender, text, isSentByMe, key) { if (key && displayedMessages.has(key)) return; if(key) displayedMessages.add(key); const initialMsg = messagesDiv.querySelector('.system i'); if (initialMsg) messagesDiv.innerHTML = ''; const msgDiv = document.createElement('div'); msgDiv.className = `message ${isSentByMe ? 'sent' : 'received'}`; const senderStrong = document.createElement('strong'); senderStrong.textContent = isSentByMe ? 'Você' : sender; const textSpan = document.createElement('span'); textSpan.className = 'message-text'; textSpan.textContent = text; msgDiv.appendChild(senderStrong); msgDiv.appendChild(textSpan); messagesDiv.appendChild(msgDiv); messagesDiv.scrollTop = messagesDiv.scrollHeight; }
+        function displaySystemMessage(text) { const p = document.createElement('p'); p.className = 'message system'; p.innerHTML = `<i>${text}</i>`; messagesDiv.appendChild(p); messagesDiv.scrollTop = messagesDiv.scrollHeight; }
+        
+        function updateUserListUI() {
+            [userListUl, userListUlSidebar].forEach(listElement => {
+                if (!listElement) return;
+                listElement.innerHTML = '';
+                if (onlineUsers.size === 0) {
+                    listElement.innerHTML = `<li>(${chatInitialized ? 'Ninguém online...' : 'Offline'})</li>`; return;
+                }
+                onlineUsers.forEach((userData, key) => {
+                    const li = document.createElement('li'); li.textContent = userData.username;
+                    if (userData.isStale) { li.classList.add('stale'); li.title = 'Ausente'; } else { li.classList.add('online'); li.title = 'Online'; }
+                    listElement.appendChild(li);
+                });
+            });
+        }
+        
+        function announcePresence() { if (user && user.is) { gun.get('societe_chat_v8_macos/online').get(user.is.pub).put({ username: chatUsername, lastSeen: Date.now() }); } }
+        function listenForUsers() { gun.get('societe_chat_v8_macos/online').map().on((data, key) => { if (user && user.is && data && data.username && key !== user.is.pub) { onlineUsers.set(key, { username: data.username, lastSeen: data.lastSeen || Date.now(), isStale: false }); } else if (!data && onlineUsers.has(key)) { onlineUsers.delete(key); } updateUserListUI(); }); }
+        function checkStaleUsers() { const now = Date.now(); let changed = false; onlineUsers.forEach((userData, key) => { const isStale = (now - userData.lastSeen) > STALE_THRESHOLD; if (userData.isStale !== isStale) { userData.isStale = isStale; changed = true; } if ((now - userData.lastSeen) > 300000) { onlineUsers.delete(key); changed = true; } }); if (changed) { updateUserListUI(); } }
+        function listenForMessages() { gun.get('societe_chat_v8_macos/msgs').map().on((data, key) => { if (data && data.message && data.sender && data.timestamp) { displayChatMessage(data.sender, data.message, data.sender === chatUsername, key); } }); }
+        function sendChatMessage() { const msgText = messageInput.value.trim(); if (!msgText || !user || !user.is) return; const messageObject = { sender: chatUsername, message: msgText, timestamp: Gun.state() }; gun.get('societe_chat_v8_macos/msgs').set(messageObject); messageInput.value = ''; }
+        
+        function initializeChatLogic() {
+            if (!user.is) return;
+            chatUsername = user.is.alias;
+            usernameDisplay.textContent = `Você: ${chatUsername}`; statusDiv.textContent = 'Status: Online';
+            announcePresence(); setInterval(announcePresence, HEARTBEAT_INTERVAL);
+            listenForUsers(); listenForMessages(); setInterval(checkStaleUsers, STALE_THRESHOLD / 2);
+            emojiBtn.addEventListener('click', (event) => { event.stopPropagation(); emojiPanel.style.display = emojiPanel.style.display === 'grid' ? 'none' : 'grid'; });
+            emojiPanel.addEventListener('click', (event) => { if (event.target.tagName === 'SPAN') { messageInput.value += event.target.textContent; emojiPanel.style.display = 'none'; messageInput.focus(); } });
+            document.addEventListener('click', (event) => { if (!emojiPanel.contains(event.target) && event.target !== emojiBtn) { emojiPanel.style.display = 'none'; } });
+            updateUserListUI();
+        }
+        
+        function createNewUser(usernameToCreate) {
+             const randomPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+             user.create(usernameToCreate, randomPassword, (ack) => {
+                 if (ack.err) { alert("Erro ao criar usuário: " + ack.err); return; }
+                 user.auth(usernameToCreate, randomPassword, (authAck) => {
+                     if (authAck.err) return;
+                     sessionStorage.setItem('gunUser_macos', JSON.stringify(user._.sea));
+                     initializeChatLogic();
+                 });
+             });
+        }
+        
+        function startChat(chosenUsername) {
+            chatUsername = chosenUsername;
+            usernameDisplay.textContent = `Você: ${chatUsername}`; statusDiv.textContent = 'Status: Conectando...';
+            const publicRelays = ['https://gun-manhattan.herokuapp.com/gun', 'https://relay.peer.ooo/gun'];
+            gun = Gun({ peers: publicRelays }); user = gun.user();
+            let storedUser = sessionStorage.getItem('gunUser_macos');
+            if (storedUser) {
+                 user.auth(JSON.parse(storedUser), (ack) => {
+                     if (ack.err) { sessionStorage.removeItem('gunUser_macos'); createNewUser(chatUsername); }
+                     else { if(user.is && user.is.alias !== chatUsername) chatUsername = user.is.alias; initializeChatLogic(); }
+                 });
+            } else { createNewUser(chatUsername); }
+        }
+        sendBtn.addEventListener('click', sendChatMessage);
+        messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
+
+        // --- INIT ---
+        async function initializeApp() {
+            if (appInitialized) return; appInitialized = true;
+            initializeVideoObserver(); initializeColorPicker(); setupNavigation();
+            try { await fetchClassicCartoonsFromAPI(currentApiPage); if (videoPostsData.length < 10) await fetchClassicCartoonsFromAPI(currentApiPage); } catch(error) {}
+            setInitialMedia(); loadMorePosts(); loadMorePosts();
+            showHomeView();
+        };
+
+    </script>
+</body>
+</html>
